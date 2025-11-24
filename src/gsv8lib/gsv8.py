@@ -4,7 +4,7 @@ Datum 01.2016
 @author: ME-Meßsysteme GmbH, Robert Bremsat, Dennis Rump
 @version 1.2
 """
-from ThreadSafeVar import TSVar
+from .ThreadSafeVar import TSVar
 
 __author__ = 'Robert bremsat & Dennis Rump'
 ###############################################################################
@@ -60,10 +60,10 @@ from queue import Queue
 from collections import deque
 import time
 import serial
-from GSV6_FrameRouter import FrameRouter
-from GSV6_Protocol import GSV_6Protocol
-from GSV6_SeriallLib import GSV6_seriall_lib
-from GSV_BasicMeasurement import BasicMeasurement
+from .GSV6_FrameRouter import FrameRouter
+from .GSV6_Protocol import GSV_6Protocol
+from .GSV6_SeriallLib import GSV6_seriall_lib
+from .GSV_BasicMeasurement import BasicMeasurement
 
 '''
 from twisted.internet import reactor

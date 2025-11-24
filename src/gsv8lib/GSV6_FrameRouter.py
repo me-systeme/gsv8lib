@@ -49,7 +49,7 @@ __author__ = 'Dennis Rump'
 import logging
 import threading
 from queue import Queue
-from GSV6_MessFrameHandler import MessFrameHandler
+from .GSV6_MessFrameHandler import MessFrameHandler
 
 class FrameRouter(threading.Thread):
     lock = threading.Lock()

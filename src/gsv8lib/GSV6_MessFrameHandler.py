@@ -50,8 +50,8 @@ import logging
 from datetime import datetime
 import os
 import threading
-from CSVwriter import CSVwriter
-from GSV_Exceptions import GSV_FilepathException
+from .CSVwriter import CSVwriter
+from .GSV_Exceptions import GSV_FilepathException
 
 
 class MessFrameHandler():

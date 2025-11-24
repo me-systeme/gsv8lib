@@ -47,12 +47,12 @@ __author__ = 'Dennis Rump'
 ###############################################################################
 # Interpret the GSV6 Seriell Kommunikation
 
-from GSV_Exceptions import *
+from .GSV_Exceptions import *
 import logging
-import GSV6_ErrorCodes
-import GSV6_BasicFrameType
+import .GSV6_ErrorCodes
+import .GSV6_BasicFrameType
 from struct import *
-from GSV6_AnfrageCodes import anfrage_code_to_shortcut
+from .GSV6_AnfrageCodes import anfrage_code_to_shortcut
 import threading
 
 
