@@ -61,9 +61,8 @@ class MessFrameHandler():
 
    """
 
-    # def __init__(self, messertRotatingQueue, gsv_lib):
-    def __init__(self, lastMesswert, gsv_lib):
-        # self.messertRotatingQueue = messertRotatingQueue
+    def __init__(self, lastMesswert, messwertRotatingQueue, gsv_lib):
+        self.messwertRotatingQueue = messwertRotatingQueue
         self.lastMesswert = lastMesswert
         self.gsv_lib = gsv_lib
         self.safeOption = False
@@ -123,7 +122,7 @@ class MessFrameHandler():
 
         # add new measure data to queue
         measureData = [timestamp, measuredValues, inputOverload, sixAxisError]
-        # self.messertRotatingQueue.append(measureData)
+        self.messwertRotatingQueue.append(measureData)
         self.lastMesswert.setVar(measureData)
         logging.getLogger('gsv8.FrameRouter.MessFrameHandler').debug('Received MessFrame added.')
 

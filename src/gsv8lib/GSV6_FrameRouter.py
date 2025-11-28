@@ -53,19 +53,17 @@ from .GSV6_MessFrameHandler import MessFrameHandler
 
 class FrameRouter(threading.Thread):
     lock = threading.Lock()
-
-    #def __init__(self, frameQueue, antwortQueue, messertRotatingQueue, gsv6Lib):
-    def __init__(self, frameQueue, antwortQueue, _lastMesswert, gsv6Lib):
+    
+    def __init__(self, frameQueue, antwortQueue, _lastMesswert, messwertRotatingQueue, gsv6Lib):
         threading.Thread.__init__(self)
         self.frameQueue = frameQueue
         self.antwortQueue = antwortQueue
-        # self.messertRotatingQueue = messertRotatingQueue
+        self.messwertRotatingQueue = messwertRotatingQueue
         self.lastMesswert = _lastMesswert
         self.gsv6 = gsv6Lib
         self.running = False
 
-        # self.messFrameEventHandler = MessFrameHandler(self.messertRotatingQueue, self.gsv6)
-        self.messFrameEventHandler = MessFrameHandler(self.lastMesswert, self.gsv6)
+        self.messFrameEventHandler = MessFrameHandler(self.lastMesswert, self.messwertRotatingQueue, self.gsv6)
         # self.antwortFrameEventHandler = AntwortFrameHandler(self.gsv6, self.antwortQueue, self.messFrameEventHandler)
 
         # fallback, this flag kills this thread if main thread killed

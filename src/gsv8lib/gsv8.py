@@ -123,7 +123,7 @@ class gsv8:
     # this queue holds the ordered config requests
     _antwortQueue = Queue(50)
 
-    # _messwertRotatingQueue = deque([], 1)
+    _messwertRotatingQueue = deque(maxlen=2000)
     _lastMesswert = TSVar()
 
     # GSV Lib
@@ -175,8 +175,7 @@ class gsv8:
             self.serialReadThread = ThreadingReadFromSerial(self._gsvSerialPort, self.serialProtocol)
 
         # create an router object/thread
-        # self.router = FrameRouter(self._frameInBuffer, self._antwortQueue, self._messwertRotatingQueue, self._gsvLib)
-        self.router = FrameRouter(self._frameInBuffer, self._antwortQueue, self._lastMesswert, self._gsvLib)
+        self.router = FrameRouter(self._frameInBuffer, self._antwortQueue, self._lastMesswert, self._messwertRotatingQueue, self._gsvLib)
 
         # start threaded read from serial
         if (not useTwisted):
@@ -345,6 +344,34 @@ class gsv8:
 
             # return BasicMeasurement(result)
         return BasicMeasurement(result)
+    
+    def ReadMultiple(self, max_count=None):
+        """
+        Liefert alle Messwerte, die seit dem letzten Aufruf gesammelt wurden.
+
+        Parameters
+        ----------
+        max_count : int oder None
+            Wenn gesetzt: maximal so viele Frames zurückgeben.
+
+        Returns
+        -------
+        list
+            Liste von Mess-Frames. Jeder Eintrag hat die Struktur:
+            [timestamp(str), values(dict), inputOverload(bool), sixAxisError(bool)]
+        """
+        data = []
+        count = 0
+
+        while self._messwertRotatingQueue:
+            data.append(self._messwertRotatingQueue.popleft())
+            count += 1
+
+            if max_count is not None and count >= max_count:
+                break
+
+        return data
+
 
     def SetZero(self, channel):
         '''
