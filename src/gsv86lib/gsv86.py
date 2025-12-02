@@ -102,12 +102,12 @@ class ThreadingReadFromSerial(threading.Thread):
         self.runnng = False
 
 
-class gsv8:
+class gsv86:
     """
 
-    Die Klasse gsv8 stellt alle GSV-8 Methoden zur Verfügung. Sie müssen in Ihrem Python Script ein Objekt für jeden
-    GSV-8 erstellen, um ein Objekt zu erzeugen verwenden Sie Variable = gsv8(port, baudrate)
-    Sie können mehrere GSV8-Objekte erzeugen.
+    Die Klasse gsv86 stellt alle GSV-8 Methoden zur Verfügung. Sie müssen in Ihrem Python Script ein Objekt für jeden
+    GSV-8 erstellen, um ein Objekt zu erzeugen verwenden Sie Variable = gsv86(port, baudrate)
+    Sie können mehrere GSV86-Objekte erzeugen.
 
     :param port: Name des zu verwenden seriellen ports
     :param baudrate: Bautrate
@@ -132,8 +132,8 @@ class gsv8:
     transmissionIsRunning = True
 
     def __init__(self, port, baudrate):
-        logging.getLogger('gsv8').setLevel(logging.INFO)
-        logging.getLogger('gsv8').info('Start with config: Serialport: {}; Baudrate: {};'.format(port, baudrate))
+        logging.getLogger('gsv86').setLevel(logging.INFO)
+        logging.getLogger('gsv86').info('Start with config: Serialport: {}; Baudrate: {};'.format(port, baudrate))
 
         '''
         if (useTwisted):
@@ -168,7 +168,7 @@ class gsv8:
             try:
                 self._gsvSerialPort = SerialPort(self.serialProtocol, port, reactor, baudrate=baudrate)
             except Exception as e:
-                logging.getLogger('gsv8t').critical('Could not open serial port: {0}. exit!'.format(e))
+                logging.getLogger('gsv86t').critical('Could not open serial port: {0}. exit!'.format(e))
                 raise Exception()
             '''
         else:
@@ -186,9 +186,9 @@ class gsv8:
 
         result = self.StopTransmission()
         if (result[0] == 0x00):
-            logging.getLogger('gsv8').info('GSV8 detected and stopped.')
+            logging.getLogger('gsv86').info('GSV8/6 detected and stopped.')
         else:
-            logging.getLogger('gsv8').critical('some error occurred; GSV answer: ' + str(result))
+            logging.getLogger('gsv86').critical('some error occurred; GSV answer: ' + str(result))
 
     def __del__(self):
         if (not useTwisted):
@@ -211,7 +211,7 @@ class gsv8:
     def StopTransmission(self):
         '''
         Die Methode StopTransmission teilt dem GSV mit, das die Messwertübertragung angehalten werden soll.
-        Sobald der Befehl abgesendet wird sendet der GSV8 keine Messdaten mehr über die serielle Schnittstelle.
+        Sobald der Befehl abgesendet wird sendet der GSV8/6 keine Messdaten mehr über die serielle Schnittstelle.
         Sie können StartTransmission verwenden um die Übertragung erneut zu starten.
         Verwenden Sie getValue um einzel Werte abzurufen.
 
@@ -1102,7 +1102,7 @@ class gsv8:
     def setStartTransmissionByInputIsHigh(self, IOPin):
         '''
         Setzt DIOtype für den angegeben IO Pin
-        Der gewaehlte IOPin muss im Vorfeld als Eingang (Input) konfiguriert werden. Wird dieser Eingang high, versendet der GSV8 mit der konfigurierten Datenrate Messwert-Frames
+        Der gewaehlte IOPin muss im Vorfeld als Eingang (Input) konfiguriert werden. Wird dieser Eingang high, versendet der GSV8/6 mit der konfigurierten Datenrate Messwert-Frames
 
         :param IOPin: IOPin 1..16 (1.1 - 4.4)
         :type IOPin: uint8

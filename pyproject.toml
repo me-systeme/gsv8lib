@@ -3,7 +3,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "gsv8lib"
+name = "gsv86lib"
 version = "0.1.0"
 description = "Python library for ME-Systeme GSV-8 (wrapped from gsv8pypi_python3)"
 authors = [{ name = "ME-Systeme GmbH" }]
@@ -12,4 +12,4 @@ requires-python = ">=3.8"
 dependencies = ["pyserial"]
 
 [project.urls]
-Homepage = "https://github.com/me-systeme/gsv8lib"
+Homepage = "https://github.com/me-systeme/gsv86lib"

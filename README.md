@@ -1,6 +1,6 @@
-# gsv8lib
+# gsv86lib
 
-`gsv8lib` is a Python package that provides a convenient interface to the  
+`gsv86lib` is a Python package that provides a convenient interface to the  
 **ME-Systeme GSV-8** measurement amplifier via serial communication.
 
 It is based on the original ME-Systeme Python library (`gsv8pypi_python3`) and
@@ -33,11 +33,11 @@ Typical use cases:
 
 ## Installation
 
-`gsv8lib` is not published on PyPI.  
+`gsv86lib` is not published on PyPI.  
 Install it directly from the Git repository:
 
 ```bash
-pip install git+https://github.com/me-systeme/gsv8lib.git
+pip install git+https://github.com/me-systeme/gsv86lib.git
 ```
 
 ## Requirements
@@ -48,11 +48,11 @@ pip install git+https://github.com/me-systeme/gsv8lib.git
 ## Basic Usage
 
 ```python
-from gsv8lib import gsv8
+from gsv86lib import gsv86
 
 # Open GSV-8 device on given serial port
 # Example: "COM5" on Windows, "/dev/ttyACM0" on Linux
-dev = gsv8("COM5", 230400)
+dev = gsv86("COM5", 230400)
 
 # Optional: configure data rate (Hz)
 dev.writeDataRate(50.0)
@@ -80,7 +80,7 @@ visualization, logging, or integration into test benches.
 
 ## API Overview
 
-`gsv8lib` exposes the original ME-Systeme API, including (non-exhaustive):
+`gsv86lib` exposes the original ME-Systeme API, including (non-exhaustive):
 
 - Measurement
   - `ReadValue()`
@@ -100,7 +100,7 @@ visualization, logging, or integration into test benches.
   - Input type configuration (bridge, single-ended, temperature, …)
 
 For a more detailed API reference, see the original ME-Systeme documentation
-(e.g. `gsv8.html` / GSV-8PyPi 1.0.0 documentation or `documentation.pdf`) or the docstrings in the
+(e.g. `gsv86.html` / GSV-8PyPi 1.0.0 documentation or `documentation.pdf`) or the docstrings in the
 source files.
 
 ## Project Structure
@@ -108,14 +108,14 @@ source files.
 Typical layout of this package:
 
 ```text
-gsv8lib/
+gsv86lib/
 ├─ pyproject.toml
 ├─ README.md
 ├─ LICENSE
 └─ src/
-   └─ gsv8lib/
+   └─ gsv86lib/
       ├─ __init__.py
-      ├─ gsv8.py
+      ├─ gsv86.py
       ├─ CSVwriter.py
       ├─ GSV_BasicMeasurement.py
       ├─ GSV_Exceptions.py
@@ -129,7 +129,7 @@ gsv8lib/
       ├─ GSV6_UnitCodes.py
       └─ ThreadSafeVar.py
 ```
-The public entry point for user code is `gsv8lib.gsv8`.
+The public entry point for user code is `gsv86lib.gsv86`.
 
 ## License
 
