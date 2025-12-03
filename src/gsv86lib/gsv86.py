@@ -123,7 +123,7 @@ class gsv86:
     # this queue holds the ordered config requests
     _antwortQueue = Queue(50)
 
-    _messwertRotatingQueue = deque(maxlen=10000)
+    _messwertRotatingQueue = deque(maxlen=2000)
     _lastMesswert = TSVar()
 
     # GSV Lib
