@@ -76,94 +76,114 @@ class GSV6_seriall_lib:
         self.cachedConfig['UserOffset'] = {}
         self.cachedConfig['InputType'] = {}
 
-    def isConfigCached(self, major):
-        self.isConfigCached(major, major)
+    def buildReadInterfaceSetting(self, index: int) -> bytes:
+        """
+        Build command frame for ReadInterfaceSetting (0x7B) for serial interface without CRC.
+        """
+        frame = bytearray()
+        frame.append(0xAA)       # Prefix
 
-    def isConfigCached(self, major, minor):
-        result = False
-        if isinstance(minor, (int, long, float, complex)):
-            minor = str(minor)
-        self.cacheLock.acquire()
-        try:
-            if self.cachedConfig.has_key(major):
-                if self.cachedConfig[major].has_key(minor):
-                    result = True
-        except:
-            logging.getLogger('serial2ws.WAMP_Component.router.GSV6_seriall_lib').warning(
-                'cache error, can\'t find ' + major + ' in cache!')
-        finally:
-            self.cacheLock.release()
-            return result
+        # 2 Bits Frame-Type = 0b10 (Command Request)
+        # 2 Bits Interface  = 0b01 (Serial without CRC)
+        # 4 Bits Length     = 1 (1 Byte Parameter: index)
+        # -> 0b10 01 0001 = 0x91
+        frame.append(0x91)
 
-    def addConfigToCache(self, major, value):
-        self.addConfigToCache(major, major, value)
+        frame.append(0x7B)              # Command: ReadInterfaceSetting
+        frame.append(index & 0xFF)      # Parameter: index / interface-number
+        frame.append(0x85)              # Suffix
 
-    def addConfigToCache(self, major, minor, value):
-        result = False
-        if isinstance(minor, (int, long, float, complex)):
-            minor = str(minor)
+        return bytes(frame)
 
-        try:
-            if self.cachedConfig.has_key(major):
-                self.cacheLock.acquire()
-                self.cachedConfig[major][minor] = value
-                result = True
-        except:
-            logging.getLogger('serial2ws.WAMP_Component.router.GSV6_seriall_lib').warning(
-                'cache error, can\'t write ' + major)
-        finally:
-            if self.cacheLock.locked():
-                self.cacheLock.release()
-            # print('addCache: ' + major + ' ' + minor)
-            return result
+    def _normalize_minor(self, minor):
+        # Zahlen als String speichern, alles andere unverändert
+        if isinstance(minor, (int, float, complex)):
+            return str(minor)
+        return minor
 
-    def markChachedConfiAsDirty(self, major):
-        self.markChachedConfiAsDirty(major, major)
+    def addConfigToCache(self, major, minor=None, value=None):
+        """
+        Store a value in the cache under major/minor.
+        If minor is None, major is used as minor key.
+        """
+
+        # Für Abwärtskompatibilität: alte Signatur (major, value)
+        if value is None:
+            # Aufruf war addConfigToCache(major, value)
+            value = minor
+            minor = major
+        
+        minor = self._normalize_minor(minor)
+
+        with self.cacheLock:
+            try:
+                if major in self.cachedConfig:
+                    self.cachedConfig[major][minor] = value
+                    return True
+                else:
+                    logging.getLogger('serial2ws.WAMP_Component.router.GSV6_seriall_lib').warning(
+                        "cache error, unknown major key %s", major
+                    )
+                    return False
+            except Exception:
+                logging.getLogger('serial2ws.WAMP_Component.router.GSV6_seriall_lib').warning(
+                    "cache error, can't write %s", major
+                )
+                return False
 
     def markChachedConfiAsDirty(self, major, minor):
-        result = False
-        if isinstance(minor, (int, long, float, complex)):
-            minor = str(minor)
-        try:
-            if self.isConfigCached(major, minor):
-                self.cacheLock.acquire()
-                self.cachedConfig[major].pop(minor)
-                result = True
-        except:
-            logging.getLogger('serial2ws.WAMP_Component.router.GSV6_seriall_lib').warning(
-                'cache error, remove ' + major + ' from cache!')
-        finally:
-            if self.cacheLock.locked():
-                self.cacheLock.release()
-            return result
+        """
+        Remove a cached config entry (mark as dirty).
+        If minor is None, major is used as minor key.
+        """
+        if minor is None:
+            minor = major
+        minor = self._normalize_minor(minor)
+
+        with self.cacheLock:
+            try:
+                if (
+                    major in self.cachedConfig and
+                    minor in self.cachedConfig[major]
+                ):
+                    del self.cachedConfig[major][minor]
+                    return True
+                return False
+            except Exception:
+                logging.getLogger('serial2ws.WAMP_Component.router.GSV6_seriall_lib').warning(
+                    "cache error, remove %s from cache!", major
+                )
+                return False
 
     def getCachedProperty(self, major, minor):
-        result = None
-        if isinstance(minor, (int, long, float, complex)):
-            minor = str(minor)
-        try:
-            if self.isConfigCached(major, minor):
-                self.cacheLock.acquire()
-                result = self.cachedConfig.get(major).get(minor)
-        except:
-            logging.getLogger('serial2ws.WAMP_Component.router.GSV6_seriall_lib').warning(
-                'cache error, can\'t get cachedConfig!')
-        finally:
-            if self.cacheLock.locked():
-                self.cacheLock.release()
-            return result
+
+        minor = self._normalize_minor(minor)
+
+        with self.cacheLock:
+            try:
+                if (
+                    major in self.cachedConfig and
+                    minor in self.cachedConfig[major]
+                ):
+                    return self.cachedConfig[major][minor]
+                return None
+            except Exception:
+                logging.getLogger('serial2ws.WAMP_Component.router.GSV6_seriall_lib').warning(
+                    "cache error, can't get cachedConfig!"
+                )
+                return None
 
     def getCachedConfig(self):
-        result = None
-        self.cacheLock.acquire()
-        try:
-            result = self.cachedConfig
-        except:
-            logging.getLogger('serial2ws.WAMP_Component.router.GSV6_seriall_lib').warning(
-                'cache error, can\'t get cachedConfig!')
-        finally:
-            self.cacheLock.release()
-            return result
+
+        with self.cacheLock:
+            try:
+                # flache Kopie reicht in der Regel
+                return dict(self.cachedConfig)
+            except Exception:
+                logging.getLogger('serial2ws.WAMP_Component.router.GSV6_seriall_lib').warning(
+                    "cache error, can't get cachedConfig!"
+                )
+                return None
 
     # ist doch so qutasch!!!
     def selectFrameType(self, firstByte):

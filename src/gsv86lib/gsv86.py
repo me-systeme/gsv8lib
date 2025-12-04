@@ -715,6 +715,67 @@ class gsv86:
 
         return result
 
+    def ReadInterfaceSettingRaw(self, index: int):
+        """
+        Low-level wrapper for command ReadInterfaceSetting (0x7B).
+
+        Returns:
+            (next_index, type_byte, data_uint32)
+        """
+        # Build and send command frame
+        output = self._gsvLib.buildReadInterfaceSetting(index)
+        self._gsvSerialPort.write(output)
+
+        # Wait for answer frame
+        antwortFrame = self._antwortQueue.get()
+
+        if antwortFrame.getAntwortErrorCode() != 0x00:
+            raise GSV_CommunicationException(
+                antwortFrame.getAntwortErrorCode(),
+                antwortFrame.getAntwortErrorText()
+            )
+
+        payload = antwortFrame.getPayload()
+        if len(payload) != 6:
+            raise GSV6_ConversionError_Exception(
+                "ReadInterfaceSetting: expected 6 bytes payload, got {}".format(len(payload))
+            )
+
+        next_index = payload[0]
+        type_byte  = payload[1]   # Basic: phys. type; Extended: flags + enum
+        data       = self._gsvLib.convertToUint32_t(payload[2:6])[0]
+
+        return next_index, type_byte, data
+
+    def readActiveBaudrate(self, interface_index: int = 0):
+        """
+        Read active baudrate (in bit/s) via ReadInterfaceSetting(0x7B).
+
+        Returns:
+            int or None
+        """
+        # 1) Basic settings für dieses Interface holen, um Startindex der Extended-Settings zu bekommen
+        next_index, type_byte, data = self.ReadInterfaceSettingRaw(interface_index)
+
+        # next_index zeigt auf den Beginn der Extended settings
+        idx = next_index
+
+        # 2) Extended-Einträge durchlaufen, bis Enum-Typ 4 (aktive Baudrate) gefunden ist
+        while idx != 0:
+            next_idx, type_byte, data = self.ReadInterfaceSettingRaw(idx)
+
+            enum_type = type_byte & 0x7F   # Bits 6:0 = Enum-Type
+            # writable_flag = bool(type_byte & 0x80)  # Bit 7 = schreibbar (hier egal)
+
+            if enum_type == 4:
+                # data ist laut Doku: "Aktive Baudrate in Bits/s"
+                return int(data)
+
+            idx = next_idx
+
+        # Kein Baudrate-Eintrag gefunden
+        return None
+
     def isSixAxisMatrixActive(self):
         '''
         gibt den Status der Calibration Matrix wieder
