@@ -114,8 +114,8 @@ def init_device() -> gsv86:
     try:
         dev.StartTransmission()
         print("StartTransmission() executed – device is now streaming with a data rate of", dev.readDataRate(), "Hz")
-        baud = dev.readActiveBaudrate()
-        print("Aktive Baudrate laut Gerät:", baud, "bit/s")
+        #baud = dev.readActiveBaudrate()
+        #print("Aktive Baudrate laut Gerät:", baud, "bit/s")
     except Exception as e:
         print(f"Error: StartTransmission() failed: {e}", file=sys.stderr)
 
@@ -131,7 +131,7 @@ def init_device() -> gsv86:
 def main():
     dev = init_device()
 
-    dev.debug_dump_interface_settings()
+    #dev.debug_dump_interface_settings()
 
     stop_event = threading.Event()
     worker = ReadMultipleWorker(
