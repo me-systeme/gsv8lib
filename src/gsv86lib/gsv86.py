@@ -121,7 +121,7 @@ class gsv86:
     _frameInBuffer = Queue(2000)
 
     # this queue holds the ordered config requests
-    _antwortQueue = Queue(50)
+    _antwortQueue = Queue(2000)
 
     _messwertRotatingQueue = deque(maxlen=2000)
     _lastMesswert = TSVar()
