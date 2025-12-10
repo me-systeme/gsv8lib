@@ -47,11 +47,7 @@ __author__ = 'Dennis Rump'
 ###############################################################################
 
 import logging
-from datetime import datetime
-import os
-import threading
-from .CSVwriter import CSVwriter
-from .GSV_Exceptions import GSV_FilepathException
+import time
 
 
 class MessFrameHandler():
@@ -65,92 +61,57 @@ class MessFrameHandler():
         self.messwertRotatingQueue = messwertRotatingQueue
         self.lastMesswert = lastMesswert
         self.gsv_lib = gsv_lib
-        self.safeOption = False
-        self.messCSVDictList = []
-        self.messCSVDictList_lock = threading.Lock()
-        self.maxCacheMessCount = 10
-        self.startTimeStampStr = ''
-        self.recordPrefix = ''
-        self.doRecording = False
-        self.messCounter = 0
+
+        # Cache attributes/functions locally for faster lookup in computeFrame
+        self._queue_append = messwertRotatingQueue.append
+        self._set_last = lastMesswert.setVar
+        self._convert_to_float = gsv_lib.convertToFloat
+
+        self._log = logging.getLogger('gsv8.FrameRouter.MessFrameHandler')
 
     def computeFrame(self, frame):
         '''
         Die Methode computeFrame erhält einen vollständigen Frame als basicFrameType und extrahiert die Messwerte der einzelnen Kanäle
         '''
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+        timestamp = time.perf_counter()
         measuredValues = bytearray(frame.getPayload())
-        values = self.gsv_lib.convertToFloat(measuredValues)
+        values = self._convert_to_float(measuredValues)
+        values_tuple = tuple(values)
 
-        measuredValues = {}
-        counter = 0
-        for f in values:
-            # there is no append/add function for Python Dictionaries
-            measuredValues['channel' + str(counter)] = f
-            counter += 1
-        if frame.isMesswertInputOverload():
-            inputOverload = True
-        else:
-            inputOverload = False
-        if frame.isMesswertSixAchsisError():
-            sixAxisError = True
-        else:
-            sixAxisError = False
+        # Flags
+        inputOverload = frame.isMesswertInputOverload()
+        sixAxisError = frame.isMesswertSixAchsisError()
 
-        if self.doRecording:
-            # handle CSVwrting
-            self.messCounter += 1
-            # add data here
-            self.messCSVDictList_lock.acquire()
+        # Compact measurement data tuple
+        measureData = (timestamp, values_tuple, inputOverload, sixAxisError)
+        
+        # Push to queue and update last value
+        self._queue_append(measureData)
+        self._set_last(measureData)
 
-            tmpM = {'timestamp': timestamp}
-            for (i, value) in enumerate(values):
-                tmpM['channel'+str(i)] = value
-            self.messCSVDictList.append(tmpM)
-            '''
-            self.messCSVDictList.append(
-                {'timestamp': timestamp, 'channel0': values[0], 'channel1': values[1], 'channel2': values[2],
-                 'channel3': values[3], 'channel4': values[4], 'channel5': values[5], 'channel6': values[6],
-                 'channel7': values[7]})
-            '''
-            self.messCSVDictList_lock.release()
-            if (self.messCounter >= self.maxCacheMessCount):
-                self.messCounter = 0
-                # semaphore lock?
-                self._writeCSVdataNow()
-                del self.messCSVDictList[:]
+        if self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug('Received MessFrame added.')
 
-        # add new measure data to queue
-        measureData = [timestamp, measuredValues, inputOverload, sixAxisError]
-        self.messwertRotatingQueue.append(measureData)
-        self.lastMesswert.setVar(measureData)
-        logging.getLogger('gsv8.FrameRouter.MessFrameHandler').debug('Received MessFrame added.')
-
+    # ------------------------------------------------------------------
+    # Dummy recording API for compatibility
+    # ------------------------------------------------------------------
     def startRecording(self, filePath, prefix):
-        if(self.doRecording):
-            return
-        logging.getLogger('gsv8.FrameRouter.MessFrameHandler').info('Messung gestartet.')
-        # check file path
-        self.csvpath = filePath
-        if self.csvpath[-1] != '/':
-            self.csvpath += '/'
-        if not os.path.exists(self.csvpath):
-            raise GSV_FilepathException(file, 'Bad Filepath; Filepath doesn\'t exists')
-        else:
-            # set timestamp
-            self.startTimeStampStr = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-            self.recordPrefix = prefix
-            self.doRecording = True
+        """
+        CSV recording is intentionally not supported in high-speed handler.
+        This method exists only for API compatibility with MessFrameHandler.
+        """
+        if self._log.isEnabledFor(logging.INFO):
+            self._log.info(
+                "startRecording() called on HighSpeedMessFrameHandler – "
+                "CSV recording is disabled in this high-speed variant."
+            )
 
     def stopRecording(self):
-        if self.doRecording:
-            logging.getLogger('gsv8.FrameRouter.MessFrameHandler').info('Messung gestopt.')
-            if (len(self.messCSVDictList) > 0):
-                self._writeCSVdataNow()
-            del self.messCSVDictList[:]
-        self.doRecording = False
-
-    def _writeCSVdataNow(self):
-        # start csvWriter
-        writer = CSVwriter(self.startTimeStampStr, self.messCSVDictList, self.messCSVDictList_lock, self.recordPrefix, self.csvpath)
-        writer.start()
+        """
+        No-op for API compatibility. No CSV recording is performed.
+        """
+        if self._log.isEnabledFor(logging.INFO):
+            self._log.info(
+                "stopRecording() called on HighSpeedMessFrameHandler – "
+                "nothing to stop, recording is disabled."
+            )

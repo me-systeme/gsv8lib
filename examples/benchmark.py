@@ -19,11 +19,18 @@ Requirements:
 import sys
 import time
 import threading
+# import os
+# # Projekt-Root bestimmen
+# ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+# SRC = os.path.join(ROOT, "src")
+# # src zum Import-Pfad hinzufügen
+# sys.path.insert(0, SRC)
+# from gsv86lib.gsv86 import gsv86
 
 from gsv86lib import gsv86
 
 # -----------------------------
-# Configuratio
+# Configuration
 # -----------------------------
 
 # Adjust the serial port!
