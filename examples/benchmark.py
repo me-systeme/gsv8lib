@@ -38,7 +38,7 @@ PORT = "COM3"          # e.g. "COM3" on Windows or "/dev/ttyACM0" on Linux
 BAUDRATE = 115200
 
 # Transmission frequency of the GSV-8 in Hz
-sample_frequency = 6000.0     # the device sends sample_frequency frames per second (so one frame every 1000/sample_frequency ms)
+sample_frequency = 12000.0     # the device sends sample_frequency frames per second (so one frame every 1000/sample_frequency ms)
 
 # Sampling rate of the worker thread in milliseconds
 # (time between two ReadMultiple() calls)

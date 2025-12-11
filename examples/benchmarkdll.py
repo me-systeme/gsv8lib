@@ -39,7 +39,7 @@ DLL_NAME = "MEGSV86x64.dll"   # e.g. "MEGSV86w32.dll" or your exact DLL name
 COM_PORT = 3
 
 # Transmission frequency of the GSV-8 in Hz
-sample_frequency = 6000.0
+sample_frequency = 12000.0
 # Device sends sample_frequency frames per second
 # (so one frame every 1000/sample_frequency ms)
 

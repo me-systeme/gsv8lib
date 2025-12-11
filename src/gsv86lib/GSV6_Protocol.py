@@ -68,11 +68,12 @@ class GSV_6Protocol():
         self.inDataBuffer = bytearray()
         self.frameQueue = frameQueue
         self.anfrageQueue = anfrageQueue
+        self._log = logging.getLogger('gsv8.GSV_6Protocol')
 
     def dataReceived(self, data):
         self.inDataBuffer.extend(data)
-        logging.getLogger('gsv8').debug(
-            'data received: ' + ' '.join(format(x, '02x') for x in bytearray(data)))
+        if self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug('data received: ' + ' '.join(format(x, '02x') for x in bytearray(data)))
         self.checkForCompleteFrame()
 
     def checkForCompleteFrame(self):
@@ -86,22 +87,24 @@ class GSV_6Protocol():
             # drop all bytes to find sync byte 0xAA
             while (len(self.inDataBuffer) > 0) and (self.inDataBuffer[0] != 0xAA):
                 self.inDataBuffer.pop(0)
-                logging.getLogger('gsv8.GSV_6Protocol').debug('Drop Byte.')
+                if self._log.isEnabledFor(logging.DEBUG):
+                    self._log.debug('Drop Byte.')
 
             # min length messwert = 5 Byte
             # min length antwort  = 4 Byte
             # abort if not enough data received
             if len(self.inDataBuffer) < 4:
-                logging.getLogger('gsv8.GSV_6Protocol').debug(
-                    'return, because minimal FrameLength not reached.')
-                logging.getLogger('gsv8.GSV_6Protocol').debug('[rec] no more rec')
+                if self._log.isEnabledFor(logging.DEBUG):
+                    self._log.debug('return, because minimal FrameLength not reached.')
+                    self._log.debug('[rec] no more rec')
                 return
 
             # Falls sich die Länge des Buffers nicht mehr ändert,
             # bringt weiteres Parsen nichts mehr -> Abbruch, um Endlosschleifen zu vermeiden
             current_length = len(self.inDataBuffer)
             if current_length == prev_length:
-                logging.getLogger('gsv8.GSV_6Protocol').debug('[rec] no more rec (length unchanged)')
+                if self._log.isEnabledFor(logging.DEBUG):
+                    self._log.debug('[rec] no more rec (length unchanged)')
                 return
             prev_length = current_length
 
@@ -116,7 +119,8 @@ class GSV_6Protocol():
             for b in self.inDataBuffer:
                 tempArray.append(b)
                 counter += 1
-                logging.getLogger('gsv8.GSV_6Protocol').debug('State: ' + str(state))
+                if self._log.isEnabledFor(logging.DEBUG):
+                    self._log.debug('State: ' + str(state))
 
                 if state == 0:
                     # okay we strip sync bytes 0xAA and 0x85 in this function
@@ -132,8 +136,8 @@ class GSV_6Protocol():
                     if not (((b & 0xC0) == 0x40) or ((b & 0xC0) == 0x00)):
                         # in this scope we can't pop (del) first byte -> idea: blank the 0xAA
                         self.inDataBuffer[0] = 0x00
-                        logging.getLogger('gsv8.GSV_6Protocol').debug(
-                            '[break] Frame seems to be not a Antwort or MsessFrame.')
+                        if self._log.isEnabledFor(logging.DEBUG):
+                            self._log.debug('[break] Frame seems to be not a Antwort or MsessFrame.')
                         break
                     else:
                         frametype = int(b >> 6)
@@ -141,43 +145,49 @@ class GSV_6Protocol():
                     if not (b & 0x30 == 0x10):
                         # in this scope we can't pop (del) first byte -> idea: blank the 0xAA
                         self.inDataBuffer[0] = 0x00
-                        logging.getLogger('gsv8.GSV_6Protocol').debug('[break] Interface != Serial')
+                        if self._log.isEnabledFor(logging.DEBUG):
+                            self._log.debug('[break] Interface != Serial')
                         break
                     # payloadLength for AntwortFrame or count of Channels for Messframe
                     payloadLength = int(b & 0x0F)
-                    logging.getLogger('gsv8.GSV_6Protocol').debug('payloadLength=' + str(payloadLength))
+                    if self._log.isEnabledFor(logging.DEBUG):
+                        self._log.debug('payloadLength=' + str(payloadLength))
                     state = 2
                     # if not -> drop: state=0;counter=0;drop incommingDataBuffer.pop(0), tempArray=[]
 
                 elif state == 2:
                     # check status byte Mess=indicator; AntwortFrame = in listErrorList?; payloadLength=calculate length of expected payload -> state=3
                     if frametype == 0:
-                        logging.getLogger('gsv8.GSV_6Protocol').debug('detected MessFrame')
+                        if self._log.isEnabledFor(logging.DEBUG):
+                            self._log.debug('detected MessFrame')
                         # it's a MessFrame
                         # first check Indikator==1
                         if (b & 0x80) != 0x80:
                             # in this scope we can't pop (del) first byte -> idea: blank the 0xAA
                             self.inDataBuffer[0] = 0x00
-                            logging.getLogger('gsv8.GSV_6Protocol').debug('[break] Indikator!=1')
+                            if self._log.isEnabledFor(logging.DEBUG):
+                                self._log.debug('[break] Indikator!=1')
                             break
                         # now get datatype as multiplier for payloadLength
                         multiplier = int((b & 0x70) >> 4) + 1
-                        logging.getLogger('gsv8.GSV_6Protocol').debug('multiplier: ' + str(multiplier))
+                        if self._log.isEnabledFor(logging.DEBUG):
+                            self._log.debug('multiplier: ' + str(multiplier))
                         # start count at 0-> +1
                         payloadLength += 1
                         payloadLength *= multiplier
-                        logging.getLogger('gsv8.GSV_6Protocol').debug(
-                            'payloadLength: ' + str(payloadLength))
+                        if self._log.isEnabledFor(logging.DEBUG):
+                            self._log.debug('payloadLength: ' + str(payloadLength))
                         state = 3
                     elif frametype == 1:
-                        logging.getLogger('gsv8.GSV_6Protocol').debug('detected Antwort Frame')
+                        if self._log.isEnabledFor(logging.DEBUG):
+                            self._log.debug('detected Antwort Frame')
                         # it's a AntwortFrame
                         # check if errorcode is in the list
                         if b not in GSV6_ErrorCodes.error_code_to_error_shortcut:
                             # in this scope we can't pop (del) first byte -> idea: blank the 0xAA
                             self.inDataBuffer[0] = 0x00
-                            logging.getLogger('gsv8.GSV_6Protocol').debug(
-                                "[break] can't find errorcode ins list.")
+                            if self._log.isEnabledFor(logging.DEBUG):
+                                self._log.debug("[break] can't find errorcode ins list.")
                             break
                         else:
                             # if no payload there, stepover state3
@@ -189,15 +199,15 @@ class GSV_6Protocol():
                         # any other frametype is not allow: drop
                         # in this scope we can't pop (del) first byte -> idea: blank the 0xAA
                         self.inDataBuffer[0] = 0x00
-                        logging.getLogger('gsv8.GSV_6Protocol').debug(
-                            '[break] other FrameType detected.')
+                        if self._log.isEnabledFor(logging.DEBUG):
+                            self._log.debug('[break] other FrameType detected.')
                         break
                         # if not -> drop: state=0;counter=0;drop incommingDataBuffer.pop(0), tempArray=[]
                         # if payload>6*4Byte, drop also
 
                 elif state == 3:
-                    logging.getLogger('gsv8.GSV_6Protocol').debug(
-                        'counter-state: ' + str((counter - state)))
+                    if self._log.isEnabledFor(logging.DEBUG):
+                        self._log.debug('counter-state: ' + str((counter - state)))
                     if payloadLength == (counter - state):
                         state = 4
                         # so we got the whole payload goto state=4
@@ -208,9 +218,11 @@ class GSV_6Protocol():
                     if not (b == 0x85):
                         # in this scope we can't pop (del) first byte -> idea: blank the 0xAA
                         self.inDataBuffer[0] = 0x00
-                        logging.getLogger('gsv8.GSV_6Protocol').debug("[break] can't find 0x85")
+                        if self._log.isEnabledFor(logging.DEBUG):
+                            self._log.debug("[break] can't find 0x85")
                     else:
-                        logging.getLogger('gsv8.GSV_6Protocol').debug('[break] found an complete Frame')
+                        if self._log.isEnabledFor(logging.DEBUG):
+                            self._log.debug('[break] found an complete Frame')
                         foundcompleteframe = True
 
                         # okay we strip sync bytes 0xAA and 0x85 in this function
@@ -221,10 +233,10 @@ class GSV_6Protocol():
                         try:
                             self.frameQueue.put_nowait(frame)
                         except Full:
-                            logging.getLogger('gsv8.GSV_6Protocol').warning(
-                                'a complete Frame was droped, because Queue was full')
-                        logging.getLogger('gsv8.GSV_6Protocol').debug(
-                            '[serial] Received complete Frame: ' +
+                            if self._log.isEnabledFor(logging.WARNING):
+                                self._log.warning('a complete Frame was droped, because Queue was full')
+                        if self._log.isEnabledFor(logging.DEBUG):
+                            self._log.debug('[serial] Received complete Frame: ' +
                             ' '.join(format(x, '02x') for x in bytearray(tempArray)))
 
                     # break anyway
@@ -236,17 +248,19 @@ class GSV_6Protocol():
                 # remove copied items
                 # (Original: self.inDataBuffer[0:counter - 1] = [])
                 self.inDataBuffer[0:counter - 1] = []
-                logging.getLogger('gsv8.GSV_6Protocol').debug(
-                    'new inDataBuffer[0]: ' +
+                if self._log.isEnabledFor(logging.DEBUG):
+                    self._log.debug('new inDataBuffer[0]: ' +
                     ' '.join(format(self.inDataBuffer[0], '02x')))
 
                 # Danach weiter im while-Loop -> nächstes Frame suchen
-                logging.getLogger('gsv8.GSV_6Protocol').debug('[rec] start rec (loop)')
+                if self._log.isEnabledFor(logging.DEBUG):
+                    self._log.debug('[rec] start rec (loop)')
                 continue
             else:
                 # Kein vollständiges Frame gefunden oder Fehler -> nichts entfernt,
                 # also macht weiteres Parsen jetzt keinen Sinn.
-                logging.getLogger('gsv8.GSV_6Protocol').debug('[rec] no more rec (no complete frame)')
+                if self._log.isEnabledFor(logging.DEBUG):
+                    self._log.debug('[rec] no more rec (no complete frame)')
                 return
 
 
