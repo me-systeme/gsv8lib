@@ -47,8 +47,11 @@ __author__ = 'Dennis Rump'
 ###############################################################################
 
 import logging
-import time
-import numpy as np
+from datetime import datetime
+import os
+import threading
+from .CSVwriter import CSVwriter
+from .GSV_Exceptions import GSV_FilepathException
 
 
 class MessFrameHandler():
@@ -62,56 +65,92 @@ class MessFrameHandler():
         self.messwertRotatingQueue = messwertRotatingQueue
         self.lastMesswert = lastMesswert
         self.gsv_lib = gsv_lib
-
-        # Cache attributes/functions locally for faster lookup in computeFrame
-        self._queue_append = messwertRotatingQueue.append
-        self._set_last = lastMesswert.setVar
-        self._convert_to_float = gsv_lib.convertToFloat
-
-        self._log = logging.getLogger('gsv8.FrameRouter.MessFrameHandler')
+        self.safeOption = False
+        self.messCSVDictList = []
+        self.messCSVDictList_lock = threading.Lock()
+        self.maxCacheMessCount = 10
+        self.startTimeStampStr = ''
+        self.recordPrefix = ''
+        self.doRecording = False
+        self.messCounter = 0
 
     def computeFrame(self, frame):
         '''
         Die Methode computeFrame erhält einen vollständigen Frame als basicFrameType und extrahiert die Messwerte der einzelnen Kanäle
         '''
-        timestamp = time.perf_counter()
-        measuredValues = frame.getPayload()        # returns bytes/bytearray
-        values = np.frombuffer(measuredValues, dtype=">f4") # float32 view, no copy
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+        measuredValues = bytearray(frame.getPayload())
+        values = self.gsv_lib.convertToFloat(measuredValues)
 
-        # Flags
-        inputOverload = frame.isMesswertInputOverload()
-        sixAxisError = frame.isMesswertSixAchsisError()
+        measuredValues = {}
+        counter = 0
+        for f in values:
+            # there is no append/add function for Python Dictionaries
+            measuredValues['channel' + str(counter)] = f
+            counter += 1
+        if frame.isMesswertInputOverload():
+            inputOverload = True
+        else:
+            inputOverload = False
+        if frame.isMesswertSixAchsisError():
+            sixAxisError = True
+        else:
+            sixAxisError = False
 
-        # Compact measurement data tuple
-        measureData = (timestamp, values, inputOverload, sixAxisError)
-        
-        # Push to queue and update last value
-        self._queue_append(measureData)
-        self._set_last(measureData)
+        if self.doRecording:
+            # handle CSVwrting
+            self.messCounter += 1
+            # add data here
+            self.messCSVDictList_lock.acquire()
 
-        if self._log.isEnabledFor(logging.DEBUG):
-            self._log.debug('Received MessFrame added.')
+            tmpM = {'timestamp': timestamp}
+            for (i, value) in enumerate(values):
+                tmpM['channel'+str(i)] = value
+            self.messCSVDictList.append(tmpM)
+            '''
+            self.messCSVDictList.append(
+                {'timestamp': timestamp, 'channel0': values[0], 'channel1': values[1], 'channel2': values[2],
+                 'channel3': values[3], 'channel4': values[4], 'channel5': values[5], 'channel6': values[6],
+                 'channel7': values[7]})
+            '''
+            self.messCSVDictList_lock.release()
+            if (self.messCounter >= self.maxCacheMessCount):
+                self.messCounter = 0
+                # semaphore lock?
+                self._writeCSVdataNow()
+                del self.messCSVDictList[:]
 
-    # ------------------------------------------------------------------
-    # Dummy recording API for compatibility
-    # ------------------------------------------------------------------
+        # add new measure data to queue
+        measureData = [timestamp, measuredValues, inputOverload, sixAxisError]
+        self.messwertRotatingQueue.append(measureData)
+        self.lastMesswert.setVar(measureData)
+        logging.getLogger('gsv8.FrameRouter.MessFrameHandler').debug('Received MessFrame added.')
+
     def startRecording(self, filePath, prefix):
-        """
-        CSV recording is intentionally not supported in high-speed handler.
-        This method exists only for API compatibility with MessFrameHandler.
-        """
-        if self._log.isEnabledFor(logging.INFO):
-            self._log.info(
-                "startRecording() called on HighSpeedMessFrameHandler – "
-                "CSV recording is disabled in this high-speed variant."
-            )
+        if(self.doRecording):
+            return
+        logging.getLogger('gsv8.FrameRouter.MessFrameHandler').info('Messung gestartet.')
+        # check file path
+        self.csvpath = filePath
+        if self.csvpath[-1] != '/':
+            self.csvpath += '/'
+        if not os.path.exists(self.csvpath):
+            raise GSV_FilepathException(file, 'Bad Filepath; Filepath doesn\'t exists')
+        else:
+            # set timestamp
+            self.startTimeStampStr = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+            self.recordPrefix = prefix
+            self.doRecording = True
 
     def stopRecording(self):
-        """
-        No-op for API compatibility. No CSV recording is performed.
-        """
-        if self._log.isEnabledFor(logging.INFO):
-            self._log.info(
-                "stopRecording() called on HighSpeedMessFrameHandler – "
-                "nothing to stop, recording is disabled."
-            )
+        if self.doRecording:
+            logging.getLogger('gsv8.FrameRouter.MessFrameHandler').info('Messung gestopt.')
+            if (len(self.messCSVDictList) > 0):
+                self._writeCSVdataNow()
+            del self.messCSVDictList[:]
+        self.doRecording = False
+
+    def _writeCSVdataNow(self):
+        # start csvWriter
+        writer = CSVwriter(self.startTimeStampStr, self.messCSVDictList, self.messCSVDictList_lock, self.recordPrefix, self.csvpath)
+        writer.start()

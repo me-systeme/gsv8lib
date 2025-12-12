@@ -76,25 +76,6 @@ class GSV6_seriall_lib:
         self.cachedConfig['UserOffset'] = {}
         self.cachedConfig['InputType'] = {}
 
-    def buildReadInterfaceSetting(self, index: int) -> bytes:
-        """
-        Build command frame for ReadInterfaceSetting (0x7B) for serial interface without CRC.
-        """
-        frame = bytearray()
-        frame.append(0xAA)       # Prefix
-
-        # 2 Bits Frame-Type = 0b10 (Command Request)
-        # 2 Bits Interface  = 0b01 (Serial without CRC)
-        # 4 Bits Length     = 1 (1 Byte Parameter: index)
-        # -> 0b10 01 0001 = 0x91
-        frame.append(0x91)
-
-        frame.append(0x7B)              # Command: ReadInterfaceSetting
-        frame.append(index & 0xFF)      # Parameter: index / interface-number
-        frame.append(0x85)              # Suffix
-
-        return bytes(frame)
-
     def _normalize_minor(self, minor):
         # Zahlen als String speichern, alles andere unverändert
         if isinstance(minor, (int, float, complex)):
